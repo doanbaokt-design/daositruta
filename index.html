@@ -517,8 +517,8 @@ function spawn(){
   const horde=S.phase==='horde',m=40*K;
   const x=m+Math.random()*(W-2*m);addFoe(pickType(SL()),x,-6-Math.random()*30,horde);if(horde)smoke(x,20*K,3,'rgba(40,10,10,.4)');
 }
-function addFoe(type,x,y,horde=false){
-  const sp30=S.level===30;
+function addFoe(type,x,y,horde=false,raw=false){
+  const sp30=S.level===30||raw;
   if(type==='gh'&&T2()&&!sp30)type='zz';
   if(T3()&&!sp30&&!['boss','fl','bt','dk','sm'].includes(type)){const r=Math.random();type=r<.126?'bt':r<.52?'sm':'dk'}
   const F=FOES[type],infM=S.phase==='inf'?1+Math.min(.8,S.infT/150):1;
@@ -544,7 +544,7 @@ const KING_H=198;
 const sumMul=()=>EL()>=7?1+.3*(EL()-6):1;
 const isKing=()=>bossPlan(S.level).includes('king');
 function spawnBoss(kind,idx,total){if(S.mode!=='play')return;
-  const F=FOES.boss,king=kind==='king',fin=S.level===30,white=fin&&!king&&idx<=4,hp=(king?(150+40*Math.max(0,EL()-6))*(fin?3:1):F.hp*(T3()&&!white?5/3:1))*HPM();
+  const F=FOES.boss,king=kind==='king',fin=S.level===30,white=fin&&!king&&idx<=4,hp=king?(150+40*Math.max(0,EL()-6))*(fin?3:1)*HPM():(!white&&HGL()?350:300);
   const gens=total-(bossPlan(S.level).includes('king')?1:0),gi=king?0:idx-(total-gens),side=gi%2?1:-1,rank=Math.floor(gi/2),hx=king||total===1?W/2:Math.max(W*.12,Math.min(W*.88,W/2+side*W*(.28+(rank%2)*.09)));
   const b={type:'boss',kind,white,fin,name:king?'Quỷ Vương':fin?(white?'Bạch Tướng':'Hỏa Tướng'):HGL()?'Hỏa Tướng':'Quỷ Tướng',phases:king?KING_PHASES:BOSS_PHASES,healT:10,horde:false,x:hx,hx,amp:total>1?W*.025:W*.2,yOff:king||total===1?0:-20*K-(fin?rank%2:rank)*70*K+(fin&&rank>=2?40*K:0),
     y:60*K,hp,max:hp,spd:F.spd*K*(king?.8:1),ph:Math.random()*6,hit:0,dash:0,dashT:0,dir:1,state:'walk',st:0,act:2.5+idx*.8};
@@ -567,9 +567,9 @@ function bossAI(b,dt){
   b.act-=dt;
   if(b.state==='stand'&&b.act<=0&&S.enemies.filter(o=>!o.dead&&o!==b).length>=Math.round((b.kind==='king'?10:4+Math.max(0,Math.min(EL(),4)-3)*2)*sumMul()*(EL()>=7?1.5:1))){b.act=1.5}
   if(b.state==='stand'&&b.act<=0){b.state='roar';b.st=0;b.fired=false;SFX.play('roar');SFX.play('summon')}
-  if(b.state==='roar'&&b.st>.45&&!b.fired&&HGL()&&b.kind!=='king'&&!b.white){b.fired=true;S.shake=.35;portalBulls(b);glowBurst(b.x,b.y-90*K,'#ff8a3a',30,220)}
+  if(b.state==='roar'&&b.st>.45&&!b.fired&&HGL()&&b.kind!=='king'&&!b.white){b.fired=true;S.shake=.35;fireSummon();glowBurst(b.x,b.y-90*K,'#ff8a3a',30,220)}
   if(b.state==='roar'&&b.st>.45&&!b.fired){b.fired=true;S.shake=.35;
-    const king=b.kind==='king',nS=Math.round((king?5:3+Math.max(0,Math.min(EL(),4)-3))*1.6*sumMul());for(let i=0;i<nS;i++)summonBack(king?(['sk','gh','gh','js'][i%4]):'sk',i,nS)
+    const king=b.kind==='king',nS=Math.round((king?5:3+Math.max(0,Math.min(EL(),4)-3))*1.6*sumMul());for(let i=0;i<nS;i++)summonBack(king?(['sk','gh','gh','js'][i%4]):'sk',i,nS);if(!king)for(let i=0;i<2;i++)summonBack('bt',i,2)
     glowBurst(b.x,b.y-90*K,'#b9a6ff',30,220)}
   if(b.state==='roar'&&b.st>1){b.state='stand';b.act=b.kind==='king'?(b.rage?5:7):(b.rage?7:9)}
 }
@@ -594,7 +594,7 @@ function onslaught(b){b.wave=(b.wave||0)+1;const w=b.wave;b.waveT=Math.max(9,17-
   toast(tx(`Bạo động lần ${w}<small>${ng?ng+' Quỷ Tướng · ':''}${nb} Đồ Tể · ${nm} quỷ vật</small>`),1);
   S.fx.push({k:'wave',x:b.x,y:b.y-100*K,life:.9,max:.9,col:'#ff3a2a'})}
 function bossPhase(b,ph){
-  if(HGL()&&b.kind!=='king'&&!b.white){b.state='roar';b.st=0;b.fired=true;S.shake=ph.rage?.9:.6;SFX.play('bossPhase',!!ph.rage);if(ph.rage)b.rage=true;portalBulls(b);toast(`${b.name} triệu hỏa ngưu<small>4 hỏa ngưu xuất hiện sau lưng</small>`,1);return}
+  if(HGL()&&b.kind!=='king'&&!b.white){b.state='roar';b.st=0;b.fired=true;S.shake=ph.rage?.9:.6;SFX.play('bossPhase',!!ph.rage);if(ph.rage)b.rage=true;fireSummon();toast(`${b.name} triệu quân<small>2 hỏa ngưu · 4 cương thi kéo tới từ phía sau</small>`,1);return}
   b.state='roar';b.st=0;b.fired=true;S.shake=ph.rage?.9:.6;S.flash=ph.rage?.7:.4;S.flashCol=ph.rage?'200,40,40':'150,120,230';
   SFX.play('bossPhase',!!ph.rage);SFX.play('summon');if(ph.rage){b.rage=true;SFX.play('alarm')}
   if(ph.rage&&b.kind==='king'&&isInf()){for(let k=0;k<2;k++){const idx=1+(S.extraGen++%4);spawnBoss('gen',idx,5)}}
@@ -603,14 +603,16 @@ function bossPhase(b,ph){
   S.fx.push({k:'wave',x:b.x,y:b.y-100*K,life:.9,max:.9,col:ph.col});
   const m=40*K;
   ph.set.forEach(([type,n0])=>{const n=Math.round(n0*1.6*sumMul()*(b.kind==='king'?1:1+Math.max(0,Math.min(EL(),4)-3)*.5));for(let i=0;i<n;i++){const x=m+Math.random()*(W-2*m),y=Math.max(40*K,b.y-90*K+Math.random()*140*K);summonBack(type,i,n)}});
+  if(b.kind!=='king')for(let i=0;i<2;i++)summonBack('bt',i,2);
   glowBurst(b.x,b.y-100*K,ph.col,50,320);
 }
 // quân triệu hồi kéo tới từ phía sau (mép trên màn hình), rải đều bề ngang, ra lần lượt
 // Quỷ Tướng cao cấp: mở 4 ô không gian ngay sau lưng, hỏa ngưu bước ra
+function fireSummon(){SFX.play('summon');for(let i=0;i<2;i++)summonBack('bt',i,2,true);for(let i=0;i<4;i++)summonBack('js',i,4,true)}
 function portalBulls(b){S.spawnQ=S.spawnQ||[];SFX.play('summon');for(let i=0;i<4;i++){const x=Math.max(30*K,Math.min(W-30*K,b.x+(i-1.5)*48*K)),y=Math.max(30*K,b.y-60*K-(i%2)*22*K);
   S.fx.push({k:'portal',x,y,life:1.3,max:1.3});S.spawnQ.push({t:.55+i*.12,type:'bt',x,y})}}
 function updSpawnQ(dt){S.spawnQ=S.spawnQ||[];S.spawnQ.forEach(q=>{q.t-=dt;if(q.t<=0){q.done=true;smoke(q.x,q.y,8,'rgba(60,20,10,.55)');addFoe(q.type,q.x,q.y);const e=S.enemies[S.enemies.length-1];if(e)e.horde=false}});S.spawnQ=S.spawnQ.filter(q=>!q.done)}
-function summonBack(type,i,n){const m=40*K,x=m+(W-2*m)*((i+.5)/n)+(Math.random()-.5)*30*K,y=-20*K-Math.random()*70*K-i*6*K;addFoe(type,x,y);
+function summonBack(type,i,n,raw){const m=40*K,x=m+(W-2*m)*((i+.5)/n)+(Math.random()-.5)*30*K,y=-20*K-Math.random()*70*K-i*6*K;addFoe(type,x,y,false,raw);
   if(Math.random()<.5)smoke(x,4*K,2,'rgba(30,18,40,.45)')}
 function summon(type,x,y){S.fx.push({k:'portal',x,y,life:.9,max:.9});smoke(x,y,8,'rgba(30,18,40,.55)');addFoe(type,x,y)}
 
@@ -1685,11 +1687,11 @@ function promo2(){
   // bán sạch trận pháp và linh thú còn thừa với giá 50%
   let gi=0,ni=0,gp=0,np=0;S.items.forEach(it=>{gi+=sellPrice(it);ni++});S.pets.forEach(p=>{if(p){gp+=petSell(p.type);np++}});
   let gph=0,nph=0;Object.keys(S.ammo).forEach(k=>{if(S.ammo[k]>0){gph+=phuSell(k);nph+=S.ammo[k];S.ammo[k]=0}});S.phuSlots=[null,null,null,null];S.act=null;
-  S.gold+=gi+gp+gph;S.items=[];S.pets=[null,null,null,null];S.tlv={};S.ptlv={};S.t2shop=true;SFX.play('coin');const t3=S.promoTier===3,nx=t3?20:10;if(t3)S.t3slots=true;
+  S.gold+=gi+gp+gph;S.items=[];S.pets=[null,null,null,null];S.t2shop=true;SFX.play('coin');const t3=S.promoTier===3,nx=t3?20:10;if(t3)S.t3slots=true;
   $('promo').classList.add('city');$('promoTitle').textContent=t3?'Hoàng cung':'Kinh thành';
   $('promoTxt').innerHTML=t3?'Quỷ vật đang tràn vào cung điện hoàng gia.<br>Đạo sĩ vào cung giúp nhà vua diệt trừ.':'Kinh thành đang bị tà ma quấy nhiễu.<br>Phải lên đường diệt trừ.';
   $('promoRows').innerHTML=`<span>Bán ${ni} trận pháp (50%)</span><span>+${gi}</span><span>Bán ${np} linh thú (50%)</span><span>+${gp}</span><span>Bán ${nph} lá phù (50%)</span><span>+${gph}</span><span>Vàng hiện có</span><span>${S.gold}</span><span>${t3?'Mở khóa cao cấp':'Mở khóa trung cấp'}</span><span>${t3?'Thêm 1 hàng ô trận pháp (15 ô)':'Thần Hành Phù · Lưỡng Nghi Kính'}</span>`;
-  const cp={level:nx,score:S.score,gold:S.gold,hp:Math.max(3,S.hp),owned:[...S.owned],items:[],inv:{},ammo:S.ammo,pets:[],tlv:{},everPhu:S.everPhu||{},act:null,at:Date.now()};
+  const cp={level:nx,score:S.score,gold:S.gold,hp:Math.max(3,S.hp),owned:[...S.owned],items:[],inv:{},ammo:S.ammo,pets:[],tlv:S.tlv||{},ptlv:S.ptlv||{},everPhu:S.everPhu||{},act:null,at:Date.now()};
   if(!S.test)try{localStorage.setItem(cpKey(S.name,nx),JSON.stringify(cp));localStorage.setItem(saveKey(S.name),JSON.stringify(cp))}catch(e){}
   $('promoBtn').textContent='Lên đường';$('promoBtn').onclick=()=>{$('promo').hidden=true;buildCards();prepLevel(nx);if(t3){toast('Mở thêm 1 hàng ô trận pháp<small>Hàng trên cùng · tổng cộng 15 ô</small>');S.newRowT=6}}}
 // màn 19: Quỷ Vương sắp chết thì triệu vạn hỏa ngưu, đồng quy vu tận
